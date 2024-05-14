@@ -26,7 +26,7 @@ create table files_at (
     , ext text
     , mime text
     , is_dir int
-    , updated_at real not null
+    , updated_at real
     , v int not null
     , mask int not null
     , foreign key (id) references files (id)
@@ -44,19 +44,15 @@ begin
         , case when old.ext != new.ext then old.ext else null end
         , case when old.mime != new.mime then old.mime else null end
         , case when old.is_dir != new.is_dir then old.is_dir else null end
-        , old.updated_at
+        , case when old.updated_at != new.updated_at then old.updated_at else null end
         , old.v
-        -- , 1
         -- max (1 << 5) - 1
-        , coalesce(
-            ((old.dir != new.dir) << 0)
-            | ((old.name != new.name) << 1)
-            | ((old.ext != new.ext) << 2)
-            -- 6 when both name and ext change
-            -- | ((old.mime != new.mime) << 3)
-            -- | ((old.is_dir != new.is_dir) << 4)
-            , 0
-        )
+        , coalesce(((old.dir != new.dir) << 0), 0)
+        | coalesce(((old.name != new.name) << 1), 0)
+        | coalesce(((old.ext != new.ext) << 2), 0)
+        | coalesce(((old.mime != new.mime) << 3), 0)
+        | coalesce(((old.is_dir != new.is_dir) << 4), 0)
+        | coalesce(((old.updated_at != new.updated_at) << 5), 0)
     ;
 end;
 

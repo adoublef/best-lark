@@ -16,7 +16,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	"bl.io/gateway/internal/drive"
@@ -48,7 +47,6 @@ func (db *DB) Touch(ctx context.Context, filename, mime string, dir xid.ID) (xid
 	insert into files (id, dir, name, ext, mime, updated_at, v)
 	values (?, ?, ?, ?, ?, ?, 0)`
 	base, ext, _ := strings.Cut(filename, ".")
-	log.Printf("%q, %q", base, ext)
 	_, err := db.RWC.Exec(ctx, q, created, ptr(dir), ptr(base), ptr(ext), ptr(mime), julian.Now())
 	if err != nil {
 		return xid.NilID(), wrap(err)
@@ -60,23 +58,24 @@ func (db *DB) Rename(ctx context.Context, filename string, isDir bool, fid xid.I
 	const mvDir = `
 	update files set
 		name = ?
+		, updated_at = ?
 		, v = v + 1
 	where id = ? and v = ?`
 	const mv = `
 	update files set
 		name = ?
 		, ext = ?
+		, updated_at = ?
 		, v = v + 1
 	where id = ? and v = ?`
 	// .git
 	// .gitignore
 	var rs sql.Result
 	if isDir {
-		rs, err = db.RWC.Exec(ctx, mvDir, ptr(filename), fid, v)
+		rs, err = db.RWC.Exec(ctx, mvDir, ptr(filename), julian.Now(), fid, v)
 	} else {
 		base, ext, _ := strings.Cut(filename, ".")
-		log.Printf("%q, %q", base, ext)
-		rs, err = db.RWC.Exec(ctx, mv, ptr(base), ptr(ext), fid, v)
+		rs, err = db.RWC.Exec(ctx, mv, ptr(base), ptr(ext), julian.Now(), fid, v)
 	}
 	if err != nil {
 		return wrap(err)
@@ -118,7 +117,7 @@ func (db *DB) StatAt(ctx context.Context, fid xid.ID, v int64) (drive.FileInfo, 
 			, (1 << 4) - 1 as mask
 		from files f where f.id = @id
 
-		union
+		union all
 
 		select
 			fa.name
@@ -143,41 +142,38 @@ func (db *DB) StatAt(ctx context.Context, fid xid.ID, v int64) (drive.FileInfo, 
 		return nil, wrap(err)
 	}
 	defer rs.Close()
-	var filename, extension, contentType string
-	var updatedAt julian.Time
-	var isDir bool
+	var filename, extension string
+	var found file
 	for rs.Next() {
 		var name, ext, mime *string
-		var is *bool
+		var isDir *bool
+		var t *julian.Time
 		var mask int
-		err := rs.Scan(&name, &ext, &mime, &is, &updatedAt, &mask)
+		err := rs.Scan(&name, &ext, &mime, &isDir, &t, &mask)
 		if err != nil {
 			return nil, wrap(err)
 		}
-		log.Printf("name=%v, ext=%v, mask=%d", name, ext, mask)
-		// name 1 mask = 3 or 1
 		if mask&2 != 0 {
-			filename = *name
+			filename = value(name)
 		}
-		// ext 3
 		if mask&3 != 0 {
-			extension = *ext
+			extension = value(ext)
 		}
-		// mime 3
-		// if mask&4 != 0 {
-		// 	contentType = *mime
-		// }
-		// is_dir 4
-		// if mask&5 != 0 {
-		// 	isDir = *is
-		// }
-		// updated_at
+		if mask&4 != 0 {
+			found.mime = value(mime)
+		}
+		if mask&5 != 0 {
+			found.isDir = value(isDir)
+		}
+		if mask&6 != 0 {
+			found.t = value(t)
+		}
 	}
 	if err := rs.Err(); err != nil {
 		return nil, wrap(err)
 	}
-	filename = strings.Join([]string{filename, extension}, ".")
-	return &file{fid, filename, contentType, isDir, updatedAt}, nil
+	found.name = strings.Join([]string{filename, extension}, ".")
+	return &found, nil
 }
 
 //go:embed all:*.up.sql
@@ -197,6 +193,14 @@ func ptr[T comparable](v T) *T {
 		return nil
 	}
 	return &v
+}
+
+func value[T any](v *T) T {
+	if v == nil {
+		var zero T
+		return zero
+	}
+	return *v
 }
 
 func rowsAffected(rs sql.Result) (n int64, err error) {
