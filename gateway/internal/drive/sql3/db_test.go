@@ -258,6 +258,26 @@ func Test_DB_StatAt(t *testing.T) {
 	})
 }
 
+func Test_DB_Mv(t *testing.T) {
+	t.Run("OK", run(func(t *testing.T, db *DB) {
+		is := is.NewRelaxed(t)
+		var (
+			filename = "main.go"
+			mime     = "text/plain"
+			dirname  = "src"
+		)
+		dir, err := db.Mkdir(context.TODO(), dirname, xid.NilID())
+		is.NoErr(err)
+
+		file, err := db.Touch(context.TODO(), filename, mime, dir)
+		is.NoErr(err) // version 0
+
+		err = db.Mv(context.TODO(), xid.NilID(), file, 0)
+		is.NoErr(err) // version 1
+	}))
+
+}
+
 func run(do func(t *testing.T, db *DB)) func(*testing.T) {
 	return func(t *testing.T) {
 		db, err := Up(context.TODO(), testFilename(t, "test.db"))

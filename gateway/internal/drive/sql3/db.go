@@ -86,6 +86,24 @@ func (db *DB) Rename(ctx context.Context, filename string, isDir bool, fid xid.I
 	return nil
 }
 
+// Mv - change the parent
+func (db *DB) Mv(ctx context.Context, parent, fid xid.ID, v int64) error {
+	const q = `
+	update files set
+		dir = ?
+		, updated_at = ?
+		, v = v + 1
+	where id = ? and v = ?`
+	rs, err := db.RWC.Exec(ctx, q, ptr(parent), julian.Now(), fid, v)
+	if err != nil {
+		return wrap(err)
+	}
+	if _, err := rowsAffected(rs); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (db *DB) Stat(ctx context.Context, fid xid.ID) (drive.FileInfo, int64, error) {
 	const q = `
 	select

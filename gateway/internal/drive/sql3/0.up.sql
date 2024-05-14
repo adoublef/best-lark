@@ -39,18 +39,12 @@ begin
     insert into files_at (id, dir, name, ext, mime, is_dir, updated_at, v, mask)
     select
         old.id
-        -- , case when coalesce(old.dir, '') != coalesce(new.dir, '') then old.dir else null end
-        , case when (old.dir != new.dir) then old.dir else null end
-        -- , case when coalesce(old.name, '') != coalesce(new.name, '') then old.name else null end
+        , case when coalesce(old.dir, '') != coalesce(new.dir, '') then old.dir else null end
         , case when (coalesce(old.name, '') != coalesce(new.name, '')) then old.name else null end
-        -- , case when coalesce(old.ext, '') != coalesce(new.ext, '') then old.ext else null end
         , case when (coalesce(old.ext, '') != coalesce(new.ext, '')) then old.ext else null end
-        -- , case when coalesce(old.mime, '') != coalesce(new.mime, '') then old.mime else null end
-        , case when (old.mime != new.mime) then old.mime else null end
-        -- , case when coalesce(old.is_dir, '') != coalesce(new.is_dir, '') then old.is_dir else null end
-        , case when (old.is_dir != new.is_dir) then old.is_dir else null end
-        -- , case when coalesce(old.updated_at, 0) != coalesce(new.updated_at, 0) then old.updated_at else null end
-        , case when (old.updated_at != new.updated_at) then old.updated_at else null end
+        , case when coalesce(old.mime, '') != coalesce(new.mime, '') then old.mime else null end
+        , case when coalesce(old.is_dir, '') != coalesce(new.is_dir, '') then old.is_dir else null end
+        , case when coalesce(old.updated_at, 0) != coalesce(new.updated_at, 0) then old.updated_at else null end
         , old.v
         , ((coalesce(old.dir, '') != coalesce(new.dir, '')) << 0)
         | ((coalesce(old.name, '') != coalesce(new.name, '')) << 1)
