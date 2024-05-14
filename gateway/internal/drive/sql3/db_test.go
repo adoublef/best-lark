@@ -225,24 +225,37 @@ func Test_DB_StatAt(t *testing.T) {
 		is.Equal(info.Name(), filename)
 	}))
 
-	t.Run("Zero", run(func(t *testing.T, db *DB) {
-		is := is.NewRelaxed(t)
-		var (
-			renamed  = "main.go"
-			filename = "index.ts"
-			mime     = "text/plain"
-		)
-		created, err := db.Touch(context.TODO(), filename, mime, xid.NilID())
-		is.NoErr(err) // version 0
+	t.Run("File", func(t *testing.T) {
+		type testcase struct {
+			init, rename string
+		}
 
-		err = db.Rename(context.TODO(), renamed, false, created, 0)
-		is.NoErr(err)
+		for name, tc := range map[string]testcase{
+			"Ext":    {init: "Dockerfile.dev", rename: "Dockerfile"},
+			"NoExt":  {init: "Dockerfile", rename: "Dockerfile.dev"},
+			"NoName": {init: ".dockerignore", rename: "prod.dockerignore"},
+			"Name":   {init: "prod.dockerignore", rename: ".dockerignore"},
+			"Both":   {init: "main.ts", rename: "index.js"},
+		} {
+			t.Run(name, run(func(t *testing.T, db *DB) {
+				is := is.NewRelaxed(t)
 
-		info, err := db.StatAt(context.TODO(), created, 0)
-		is.NoErr(err)
+				created, err := db.Touch(context.TODO(), tc.init, "text/plain", xid.NilID())
+				is.NoErr(err) // version 0
 
-		is.Equal(info.Name(), filename)
-	}))
+				// time.Sleep(time.Second * 1)
+
+				err = db.Rename(context.TODO(), tc.rename, false, created, 0)
+				is.NoErr(err)
+
+				info, err := db.StatAt(context.TODO(), created, 0)
+				is.NoErr(err)
+
+				// t.Logf("%q, %q", tc.init, tc.rename)
+				is.Equal(info.Name(), tc.init)
+			}))
+		}
+	})
 }
 
 func run(do func(t *testing.T, db *DB)) func(*testing.T) {

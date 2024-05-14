@@ -114,7 +114,7 @@ func (db *DB) StatAt(ctx context.Context, fid xid.ID, v int64) (drive.FileInfo, 
 			, f.is_dir
 			, f.updated_at
 			, f.v
-			, (1 << 4) - 1 as mask
+			, (1 << 6) - 1 as mask
 		from files f where f.id = @id
 
 		union all
@@ -153,26 +153,36 @@ func (db *DB) StatAt(ctx context.Context, fid xid.ID, v int64) (drive.FileInfo, 
 		if err != nil {
 			return nil, wrap(err)
 		}
+		// dir=mask&1
 		if mask&2 != 0 {
+			// log.Printf("2,%d", mask)
 			filename = value(name)
 		}
-		if mask&3 != 0 {
+		if mask&4 != 0 {
+			// log.Printf("3,%d,%v", mask, (ext))
 			extension = value(ext)
 		}
-		if mask&4 != 0 {
+		if mask&8 != 0 {
+			// log.Printf("4,%d", mask)
 			found.mime = value(mime)
 		}
-		if mask&5 != 0 {
+		if mask&16 != 0 {
+			// log.Printf("5,%d", mask)
 			found.isDir = value(isDir)
 		}
-		if mask&6 != 0 {
+		if mask&32 != 0 {
+			// log.Printf("6,%d", mask)
 			found.t = value(t)
 		}
+		// version=mask&64
 	}
 	if err := rs.Err(); err != nil {
 		return nil, wrap(err)
 	}
-	found.name = strings.Join([]string{filename, extension}, ".")
+	found.name = filename
+	if extension != "" {
+		found.name = filename + "." + extension
+	}
 	return &found, nil
 }
 

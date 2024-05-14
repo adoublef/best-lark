@@ -39,45 +39,33 @@ begin
     insert into files_at (id, dir, name, ext, mime, is_dir, updated_at, v, mask)
     select
         old.id
-        , case when old.dir != new.dir then old.dir else null end
-        , case when old.name != new.name then old.name else null end
-        , case when old.ext != new.ext then old.ext else null end
-        , case when old.mime != new.mime then old.mime else null end
-        , case when old.is_dir != new.is_dir then old.is_dir else null end
-        , case when old.updated_at != new.updated_at then old.updated_at else null end
+        -- , case when coalesce(old.dir, '') != coalesce(new.dir, '') then old.dir else null end
+        , case when (old.dir != new.dir) then old.dir else null end
+        -- , case when coalesce(old.name, '') != coalesce(new.name, '') then old.name else null end
+        , case when (coalesce(old.name, '') != coalesce(new.name, '')) then old.name else null end
+        -- , case when coalesce(old.ext, '') != coalesce(new.ext, '') then old.ext else null end
+        , case when (coalesce(old.ext, '') != coalesce(new.ext, '')) then old.ext else null end
+        -- , case when coalesce(old.mime, '') != coalesce(new.mime, '') then old.mime else null end
+        , case when (old.mime != new.mime) then old.mime else null end
+        -- , case when coalesce(old.is_dir, '') != coalesce(new.is_dir, '') then old.is_dir else null end
+        , case when (old.is_dir != new.is_dir) then old.is_dir else null end
+        -- , case when coalesce(old.updated_at, 0) != coalesce(new.updated_at, 0) then old.updated_at else null end
+        , case when (old.updated_at != new.updated_at) then old.updated_at else null end
         , old.v
-        -- max (1 << 5) - 1
-        , coalesce(((old.dir != new.dir) << 0), 0)
-        | coalesce(((old.name != new.name) << 1), 0)
-        | coalesce(((old.ext != new.ext) << 2), 0)
-        | coalesce(((old.mime != new.mime) << 3), 0)
-        | coalesce(((old.is_dir != new.is_dir) << 4), 0)
-        | coalesce(((old.updated_at != new.updated_at) << 5), 0)
+        , ((coalesce(old.dir, '') != coalesce(new.dir, '')) << 0)
+        | ((coalesce(old.name, '') != coalesce(new.name, '')) << 1)
+        | ((coalesce(old.ext, '') != coalesce(new.ext, '')) << 2)
+        | ((coalesce(old.mime, '') != coalesce(new.mime, '')) << 3)
+        | ((coalesce(old.is_dir, '') != coalesce(new.is_dir, '')) << 4)
+        | ((coalesce(old.updated_at, 0) != coalesce(new.updated_at, 0)) << 5)
     ;
 end;
 
--- create table journals_history (
---   journal_id text
---   , title text
---   , owned_by text
---   , updated_at real
---   , _version int not null
---   , _mask int not null
---   , primary key (journal_id, _version)
--- ) without rowid;
-
--- create trigger update_journals_history
--- after update on journals for each row
--- begin
---   insert into journals_history (journal_id, title, owned_by, updated_at, _version, _mask)
---   select old.id
---     , case when old.title != new.title then old.title else null end
---     , case when old.owned_by != new.owned_by then old.owned_by else null end
---     , old.updated_at
---     -- , 0.0
---     , old._version
---     , coalesce(((old.title != new.title) << 0)
---     | ((old.owned_by != new.owned_by) << 1)
---     , 0)
---   ;
--- end;
+-- 0<<0=0
+-- 1<<0=1
+-- 0<<1=0
+-- 1<<1=2
+-- 0<<2=0
+-- 1<<2=4
+-- 0<<3=0
+-- 1<<3=8
