@@ -6,6 +6,7 @@ create table files (
     , name text
     , ext text
     , mime text
+    -- TODO S3 bucket location
     , is_dir int as (case when mime is null then 1 else 0 end)
     -- julian time
     , updated_at real not null
