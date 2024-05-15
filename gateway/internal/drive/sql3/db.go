@@ -5,8 +5,6 @@ NOTE, these methods are still needing to be implemented
 
   - Implement `Find`
   - Implement `Ls`
-  - Implement `StatAt`
-  - Implement `Rename`
 */
 package sql3
 
@@ -29,6 +27,9 @@ type DB struct {
 	RWC *sql3.DB
 }
 
+// Mkdir is analogous to the Unix command 'mkdir' in which creates a new directory entry.
+//
+// If parent is the nil value of [xid.ID] it will use the root directory.
 func (db *DB) Mkdir(ctx context.Context, dirname string, parent xid.ID) (xid.ID, error) {
 	created := xid.New()
 	const q = `
@@ -41,6 +42,11 @@ func (db *DB) Mkdir(ctx context.Context, dirname string, parent xid.ID) (xid.ID,
 	return created, nil
 }
 
+// Touch is analogous to the Unix command 'touch' in which creates a new file entry.
+// A file entry needn't an extension or a basename to be valid but at least needs
+// to be provided.
+//
+// If parent is the nil value of [xid.ID] it will use the root directory.
 func (db *DB) Touch(ctx context.Context, filename, mime string, dir xid.ID) (xid.ID, error) {
 	created := xid.New()
 	const q = `
@@ -54,6 +60,7 @@ func (db *DB) Touch(ctx context.Context, filename, mime string, dir xid.ID) (xid
 	return created, nil
 }
 
+// Rename a file or directory.
 func (db *DB) Rename(ctx context.Context, filename string, isDir bool, fid xid.ID, v int64) (err error) {
 	const mvDir = `
 	update files set
@@ -68,8 +75,6 @@ func (db *DB) Rename(ctx context.Context, filename string, isDir bool, fid xid.I
 		, updated_at = ?
 		, v = v + 1
 	where id = ? and v = ?`
-	// .git
-	// .gitignore
 	var rs sql.Result
 	if isDir {
 		rs, err = db.RWC.Exec(ctx, mvDir, ptr(filename), julian.Now(), fid, v)
@@ -86,7 +91,9 @@ func (db *DB) Rename(ctx context.Context, filename string, isDir bool, fid xid.I
 	return nil
 }
 
-// Mv - change the parent
+// Mv a file or directory under a different parent directory.
+//
+// If parent is the nil value of [xid.ID] it will use the root directory.
 func (db *DB) Mv(ctx context.Context, parent, fid xid.ID, v int64) error {
 	const q = `
 	update files set
@@ -104,6 +111,8 @@ func (db *DB) Mv(ctx context.Context, parent, fid xid.ID, v int64) error {
 	return nil
 }
 
+// Stat is analogous to the Unix 'stat' command. It will display information about
+// the [drive.FileInfo] at the latest version.
 func (db *DB) Stat(ctx context.Context, fid xid.ID) (drive.FileInfo, int64, error) {
 	const q = `
 	select
@@ -122,6 +131,8 @@ func (db *DB) Stat(ctx context.Context, fid xid.ID) (drive.FileInfo, int64, erro
 	return &found, n, nil
 }
 
+// StatAt is analogous to the Unix 'stat' command. It will display information about
+// the [drive.FileInfo] at the specified version.
 func (db *DB) StatAt(ctx context.Context, fid xid.ID, v int64) (drive.FileInfo, error) {
 	const q = `
 	with cte as (
