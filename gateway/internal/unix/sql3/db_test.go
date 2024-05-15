@@ -14,9 +14,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"bl.io/gateway/internal/drive"
-	. "bl.io/gateway/internal/drive/sql3"
 	"github.com/rs/xid"
+	"go.adoublef.dev/drive/internal/unix"
+	. "go.adoublef.dev/drive/internal/unix/sql3"
 	"go.adoublef.dev/is"
 )
 
@@ -44,13 +44,13 @@ func Test_DB_Mkdir(t *testing.T) {
 	t.Run("NoName", run(func(t *testing.T, db *DB) {
 		is := is.NewRelaxed(t)
 		_, err := db.Mkdir(context.TODO(), "", xid.NilID())
-		is.Err(err, drive.ErrConflict)
+		is.Err(err, unix.ErrConflict)
 	}))
 
 	t.Run("NoParent", run(func(t *testing.T, db *DB) {
 		is := is.NewRelaxed(t)
 		_, err := db.Mkdir(context.TODO(), "cmd", xid.New())
-		is.Err(err, drive.ErrConflict)
+		is.Err(err, unix.ErrConflict)
 	}))
 
 	// Nested
@@ -92,7 +92,7 @@ func Test_DB_Touch(t *testing.T) {
 			mime = "application/octet-stream"
 		)
 		_, err := db.Touch(context.TODO(), "", mime, xid.NilID())
-		is.Err(err, drive.ErrConflict)
+		is.Err(err, unix.ErrConflict)
 	}))
 
 	t.Run("Root", run(func(t *testing.T, db *DB) {
@@ -112,13 +112,13 @@ func Test_DB_Touch(t *testing.T) {
 	t.Run("NoMIME", run(func(t *testing.T, db *DB) {
 		is := is.NewRelaxed(t)
 		_, err := db.Touch(context.TODO(), "README.md", "", xid.NilID())
-		is.Err(err, drive.ErrConflict)
+		is.Err(err, unix.ErrConflict)
 	}))
 
 	t.Run("NoParent", run(func(t *testing.T, db *DB) {
 		is := is.NewRelaxed(t)
 		_, err := db.Touch(context.TODO(), "main.go", "text/plain", xid.New())
-		is.Err(err, drive.ErrConflict)
+		is.Err(err, unix.ErrConflict)
 	}))
 
 	t.Run("Nested", run(func(t *testing.T, db *DB) {
@@ -205,7 +205,7 @@ func Test_DB_Rename(t *testing.T) {
 		is.NoErr(err) // version 0
 
 		err = db.Rename(context.TODO(), "", true, created, 0)
-		is.Err(err, drive.ErrConflict)
+		is.Err(err, unix.ErrConflict)
 	}))
 }
 

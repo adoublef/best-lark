@@ -47,6 +47,14 @@ begin
         , case when coalesce(old.is_dir, '') != coalesce(new.is_dir, '') then old.is_dir else null end
         , case when coalesce(old.updated_at, 0) != coalesce(new.updated_at, 0) then old.updated_at else null end
         , old.v
+        -- 0<<0=0
+        -- 1<<0=1
+        -- 0<<1=0
+        -- 1<<1=2
+        -- 0<<2=0
+        -- 1<<2=4
+        -- 0<<3=0
+        -- 1<<3=8
         , ((coalesce(old.dir, '') != coalesce(new.dir, '')) << 0)
         | ((coalesce(old.name, '') != coalesce(new.name, '')) << 1)
         | ((coalesce(old.ext, '') != coalesce(new.ext, '')) << 2)
@@ -56,11 +64,4 @@ begin
     ;
 end;
 
--- 0<<0=0
--- 1<<0=1
--- 0<<1=0
--- 1<<1=2
--- 0<<2=0
--- 1<<2=4
--- 0<<3=0
--- 1<<3=8
+-- TODO fts5 on the result of (files.name || files.ext) but only for viewable files

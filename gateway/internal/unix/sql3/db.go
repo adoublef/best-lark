@@ -16,9 +16,9 @@ import (
 	"fmt"
 	"strings"
 
-	"bl.io/gateway/internal/drive"
 	"github.com/mattn/go-sqlite3"
 	"github.com/rs/xid"
+	"go.adoublef.dev/drive/internal/unix"
 	"go.adoublef.dev/sdk/database/sql3"
 	"go.adoublef.dev/sdk/time/julian"
 )
@@ -112,8 +112,8 @@ func (db *DB) Mv(ctx context.Context, parent, fid xid.ID, v int64) error {
 }
 
 // Stat is analogous to the Unix 'stat' command. It will display information about
-// the [drive.FileInfo] at the latest version.
-func (db *DB) Stat(ctx context.Context, fid xid.ID) (drive.FileInfo, int64, error) {
+// the [unix.FileInfo] at the latest version.
+func (db *DB) Stat(ctx context.Context, fid xid.ID) (unix.FileInfo, int64, error) {
 	const q = `
 	select
 		f.name || coalesce(f.ext, '') as name
@@ -132,8 +132,8 @@ func (db *DB) Stat(ctx context.Context, fid xid.ID) (drive.FileInfo, int64, erro
 }
 
 // StatAt is analogous to the Unix 'stat' command. It will display information about
-// the [drive.FileInfo] at the specified version.
-func (db *DB) StatAt(ctx context.Context, fid xid.ID, v int64) (drive.FileInfo, error) {
+// the [unix.FileInfo] at the specified version.
+func (db *DB) StatAt(ctx context.Context, fid xid.ID, v int64) (unix.FileInfo, error) {
 	const q = `
 	with cte as (
 		select
@@ -221,7 +221,7 @@ var embedFS embed.FS
 func Up(ctx context.Context, filename string) (*DB, error) {
 	rwc, err := sql3.Up(ctx, filename, embedFS)
 	if err != nil {
-		return nil, fmt.Errorf("drive/sql3: run migrations: %w", err)
+		return nil, fmt.Errorf("unix/sql3: run migrations: %w", err)
 	}
 	return &DB{rwc}, nil
 }
@@ -246,7 +246,7 @@ func rowsAffected(rs sql.Result) (n int64, err error) {
 	if n, err = rs.RowsAffected(); err != nil {
 		return 0, err
 	} else if n == 0 {
-		return 0, drive.ErrNotFound
+		return 0, unix.ErrNotFound
 	}
 	return
 }
@@ -256,16 +256,16 @@ func wrap(err error) error {
 		return nil
 	}
 	if errors.Is(err, sql.ErrNoRows) {
-		return errors.Join(err, drive.ErrNotFound)
+		return errors.Join(err, unix.ErrNotFound)
 	}
 	// https://github.com/mattn/go-sqlite3/issues/244
 	if errors.As(err, new(sqlite3.Error)) {
 		switch err.(sqlite3.Error).ExtendedCode {
 		case sqlite3.ErrConstraintForeignKey: // maybe this is not treated the same
-			return errors.Join(err, drive.ErrConflict)
+			return errors.Join(err, unix.ErrConflict)
 		case sqlite3.ErrConstraintCheck:
-			return errors.Join(err, drive.ErrConflict)
+			return errors.Join(err, unix.ErrConflict)
 		}
 	}
-	return fmt.Errorf("drive/sql3: %w", err)
+	return fmt.Errorf("unix/sql3: %w", err)
 }

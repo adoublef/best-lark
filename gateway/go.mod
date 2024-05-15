@@ -1,4 +1,4 @@
-module bl.io/gateway
+module go.adoublef.dev/drive
 
 go 1.22.2
 
